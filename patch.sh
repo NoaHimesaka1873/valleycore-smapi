@@ -36,22 +36,6 @@ patchifvalid() {
     fi
 }
 
-warn() {
-    echo "No files could be patched. Make sure the patch.sh script is in the same directory as the dll files."
-}
-
-mkdir temp
-pushd temp
-curl -fLo SkiaSharp.zip https://www.nuget.org/api/v2/package/SkiaSharp.NativeAssets.Linux/2.80.3
-curl -fLO https://github.com/Pathoschild/SMAPI/releases/download/4.3.2/SMAPI-4.3.2-installer.zip
-unzip SkiaSharp.zip
-unzip SMAPI-4.3.2-installer.zip
-popd
-
-unzip "temp/SMAPI 4.3.2 installer/internal/linux/install.dat"
-cp temp/runtimes/linux-arm64/native/libSkiaSharp.so .
-cp "Stardew Valley.deps.json" StardewModdingAPI.deps.json
-
 # no unmanaged code is contained in these, so this works
 patchifvalid "Stardew Valley.dll"
 patchifvalid "MonoGame.Framework.dll"
@@ -61,20 +45,21 @@ patchifvalid "BmFont.dll"
 patchifvalid "Lidgren.Network.dll"
 patchifvalid "StardewModdingAPI.dll"
 
-mv StardewValley StardewValley-original
+if ! [ $filesfound -eq 1 ]; then
+    echo "No files could be patched. Make sure the patch.sh script is in the same directory as the dll files."
+    sleep 5 && exit
+fi
 
-cat <<EOF > StardewValley
-#!/usr/bin/env bash
-dotnet StardewModdingAPI.dll
-EOF
-chmod +x StardewValley
+cp "Stardew Valley.deps.json" StardewModdingAPI.deps.json
+
+mv StardewValley StardewValley-original
+mv smapi-wrapper.sh StardewValley
 
 export -f patchifvalid arch_as_hex patch_dll
 export arch_pos
 find ./Mods/ -type f -name "*.dll" -exec bash -c 'patchifvalid "{}"' \;
 
-if ! [ $filesfound -eq 1 ]; then
-    warn
-else
-    echo "Done! Run 'StardewValley' to launch game. Remember to run patch-mods.sh after installing mods!"
-fi
+echo "Done! Run 'StardewValley' (no spaces) to launch game. "
+
+# ensures that the console stays open for a while
+sleep 5 
